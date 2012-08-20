@@ -61,9 +61,9 @@ class OxidGen extends CLI
             }
         }
 
-        $this->printSeperator("_");
+        $this->printSeperator( "_" );
         $this->buildExtensionArray();
-
+        $this->writeMetaDataFile();
     }
 
     protected function optionMetadataversion( $metadataversion_from_option = "" ) {
@@ -152,10 +152,10 @@ class OxidGen extends CLI
         if ( $extend_from_option != "" ) {
             $extend_string = $lang_from_option;
         }else {
-            $extend_string = $this->getInput( "Please enter the Oxid-Classes you want to extend, seperated by a Comma:" );
+            $extend_string = $this->getInput( "Please enter the Oxid-Classes you want to extend, seperated by a Semicolon:" );
         }
         if ( $extend_string != "" ) {
-            $this->extend = explode( "," , str_replace( " ", "", $extend_string ) );
+            $this->extend = explode( ";" , str_replace( " ", "", $extend_string ) );
         }
     }
 
@@ -166,7 +166,7 @@ class OxidGen extends CLI
             $this->printInfo( "Please specify the new Components of your Extension:", true );
             $this->printSeperator( "-" );
             $this->printSeperator();
-            $this->printInfo( "Allways use the following format: Type:ClassName. To add more, seperate the Entrys by Comma.", true );
+            $this->printInfo( "Allways use the following format: Type:ClassName. To add more, seperate the Entrys by Semicolon.", true );
             $this->printSeperator();
             $this->printInfo( "The Type can be one of the following Options:", true );
             $this->printInfo( "controller - ViewController also know as the 'cl' parameter. We will automaticly create the Template File.", true );
@@ -174,14 +174,84 @@ class OxidGen extends CLI
             $this->printInfo( "lib - Classes which will be created in the lib Folder.", true );
             $this->printInfo( "any - You can simply specify a Foldername (except controller, model or lib) and we create the class in this folder.", true );
             $this->printSeperator( "-" );
-            $files_string = $this->getInput( "Remember: Type:ClassName" ) . ",";
+            $files_string = $this->getInput( "Remember: Type:ClassName >>>" ) . ";";
         }
+
         if ( $files_string != "" ) {
-            $files_array = explode( "," , str_replace( " ", "", $files_string ) );
+            $files_array = explode( ";" , str_replace( " ", "", $files_string ) );
             foreach ( $files_array as $file_string ) {
                 if ( $file_string != "" ) {
                     $single_file_array = explode( ":", $file_string );
                     $this->files[$single_file_array[0]] = $single_file_array[1];
+                }
+            }
+        }
+    }
+
+    protected function optionTemplates( $templates_from_option = "" ) {
+        if ( $templates_from_option != "" ) {
+            $templates_string = $templates_from_option;
+        }else {
+            $this->printInfo( "Add a new Template to the Extension:", true );
+            $this->printSeperator( "-" );
+            $this->printSeperator();
+            $this->printInfo( "Specify if the Template should be an Admin Template. To add more, seperate the Entrys by Semicolon.", true );
+            $this->printSeperator();
+            $this->printInfo( "Set the ThemeType to 'admin' to add an Admin Template.", true );
+            $this->printInfo( "Set the ThemeType to 'theme' to add a normal Template.", true );
+            $this->printSeperator();
+            $this->printSeperator( "-" );
+            $templates_string = $this->getInput( "Remember: ThemeType:<TemplateName> >>>" ) . ";";
+        }
+        if ( $templates_string != "" ) {
+            $templates_array = explode( ";" , str_replace( " ", "", $templates_string ) );
+            foreach ( $templates_array as $template_string ) {
+                if ( $template_string != "" ) {
+                    $single_template_array = explode( ":", $template_string );
+                    $this->templates[$single_template_array[0]] = $single_template_array[1];
+                }
+            }
+        }
+    }
+
+
+    protected function optionBlocks( $blocks_from_option = "" ) {
+        $default_order = array( 'template', 'block' );
+        if ( $blocks_from_option != "" ) {
+            $blocks_string = $blocks_from_option;
+        }else {
+            $this->printInfo( "Add a new Block to the Extension:", true );
+            $this->printSeperator( "-" );
+            $this->printSeperator();
+            $this->printInfo( "Use the following Format to specify a block. To add more, seperate the Entrys by Semicolon.", true );
+            $this->printSeperator();
+            $this->printInfo( "template: - The original Template where the block is located.", true );
+            $this->printInfo( "block: - The name of the Block yyou want to extent/override.", true );
+            $this->printInfo( "Concat both with a comma.", true );
+            $this->printSeperator();
+            $this->printSeperator( "-" );
+            $blocks_string = $this->getInput( "Remember: template:<TemplateName>, block:<BlockName> >>>" ) . ";";
+        }
+        if ( $blocks_string != "" ) {
+            $blocks_array = explode( ";" , str_replace( " ", "", $blocks_string ) );
+            foreach ( $blocks_array as $block_string ) {
+                if ( $block_string != "" ) {
+                    $single_block_array = explode( ",", $block_string );
+
+                    $sorted_single_block_array = array();
+                    //nice ordering
+                    foreach ( $default_order as $key ) {
+                        foreach ( $single_block_array as $single_block_string ) {
+                            if ( strpos( strtolower( $single_block_string ), $key .':' ) !== false ) {
+                                if ( $single_block_string != "" ) {
+                                    $val_array = explode( ":", $single_block_string );
+                                    $sorted_single_block_array[$key] = $val_array[1];
+                                }
+                            }
+                        }
+                    }
+                    $this->blocks[] = $sorted_single_block_array;
+
                 }
             }
         }
@@ -196,7 +266,7 @@ class OxidGen extends CLI
         if ( empty( $this->aModules ) ) {
 
             $this->aModules["sMetadataVersion"] = $this->sMetadataVersion;
-            $this->aModules["id"] = $this->namespace . "_" . $this->id;
+            $this->aModules["id"] = $this->id;
             $this->aModules["title"] = $this->title;
             $this->aModules["version"] = $this->version;
             if ( $this->description != "" ) {
@@ -213,6 +283,8 @@ class OxidGen extends CLI
             }
             $this->aModules["files"] = $this->processFiles( $this->files );
             $this->aModules["extend"] = $this->processExtend( $this->extend );
+            $this->aModules["templates"] = $this->processTemplates( $this->templates );
+            $this->aModules["blocks"] = $this->processBlocks($this->blocks);
         }
     }
 
@@ -245,14 +317,44 @@ class OxidGen extends CLI
         return $processed_files;
     }
 
-    protected function processExtend( $extend_array = array() ){
+    protected function processExtend( $extend_array = array() ) {
         $processed_extends = array();
         if ( ! empty( $extend_array ) ) {
             ksort( $extend_array );
             foreach ( $extend_array as $extend_class_name ) {
-                $processed_extends[$extend_class_name] = $this->fileHandler->createExtendClass($extend_class_name);
+                $processed_extends[$extend_class_name] = $this->fileHandler->createExtendClass( $extend_class_name );
             }
         }
+        return $processed_extends;
+    }
+
+    protected function processTemplates( $templates_array = array() ) {
+        $processed_templates = array();
+        if ( ! empty( $templates_array ) ) {
+            ksort( $templates_array );
+            foreach ( $templates_array as $type => $template_name ) {
+                $template_name = $this->fileHandler->templateName( $template_name );
+                $processed_templates[$template_name] = $this->fileHandler->createTemplate( $template_name, $type );
+            }
+        }
+        return $processed_templates;
+    }
+
+    protected function processBlocks( $blocks_array = array() ) {
+        $processed_blocks = array();
+        if ( ! empty( $blocks_array ) ) {
+            foreach ( $blocks_array as $single_block_array ) {
+                $block_template_name = $this->fileHandler->templateName( $single_block_array['block'] );
+                $single_block_array['file'] = $block_template_name;
+                $this->fileHandler->createTemplate( $block_template_name, 'block' );
+                $processed_blocks[] = $single_block_array;
+            }
+        }
+        return $processed_blocks;
+    }
+
+    protected function writeMetaDataFile() {
+        $this->fileHandler->writeMetaDataFile( $this->aModules );
     }
 }
 
